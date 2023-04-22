@@ -119,7 +119,7 @@ class ViewController: UIViewController, ARSessionDelegate {
                 
 //                // Position the annotation node relative to the anchor
                 
-                let anchorWorldPosition = anchor.transform.columns.3
+//                let anchorWorldPosition = anchor.transform.columns.3
                 
 //                let annotationPositionInAnchor = anchorEntity.convert(position: SIMD3<Float>(anchorWorldPosition.x, anchorWorldPosition.y, anchorWorldPosition.z), to: annotationNode)
 //                annotationNode.position = annotationPositionInAnchor
@@ -129,23 +129,47 @@ class ViewController: UIViewController, ARSessionDelegate {
 //                let annotationOrientation = simd_quatf(angle: .pi, axis: SIMD3<Float>(0, 1, 0))
 //                annotationNode.orientation = annotationNode.orientation * annotationOrientation
 
-                let coordinateSystem = MeshResource.generateCoordinateSystemAxes()
+//                let coordinateSystem = MeshResource.generateCoordinateSystemAxes()
 //                anchorEntity.addChild(coordinateSystem)
                 
-                let color = anchor.sessionIdentifier?.toRandomColor() ?? .white
-                let textMesh = MeshResource.generateText(text, extrusionDepth: 0.01, font: .systemFont(ofSize: 0.1), containerFrame: CGRect(origin: .zero, size: CGSize(width: 1.0, height: 0.2)), alignment: .center, lineBreakMode: .byWordWrapping)
+//                let color = anchor.sessionIdentifier?.toRandomColor() ?? .white
+//                let textMesh = MeshResource.generateText(text, extrusionDepth: 0.01, font: .systemFont(ofSize: 0.1), containerFrame: CGRect(origin: .zero, size: CGSize(width: 1.0, height: 0.2)), alignment: .center, lineBreakMode: .byWordWrapping)
 //                let textMaterial = SimpleMaterial(color: .white, roughness: 0.0, isMetallic: true)
-                let textEntity = ModelEntity(mesh: textMesh, materials: [SimpleMaterial(color: color, isMetallic: true)])
-                
-                textEntity.position = [0, 0, 0]
+//                let textEntity = ModelEntity(mesh: textMesh, materials: [SimpleMaterial(color: color, isMetallic: true)])
+//
+//                textEntity.position = [0, 0, 0]
 
                 let anchorEntity = AnchorEntity(anchor: anchor)
+                
+                let textEntity = textGen(textString: text)
 
                 anchorEntity.addChild(textEntity)
 
                 arView.scene.addAnchor(anchorEntity)
             }
         }
+    }
+    
+    func textGen(textString: String) -> ModelEntity {
+            
+        let materialVar = SimpleMaterial(color: .red, roughness: 0, isMetallic: false)
+        
+        let depthVar: Float = 0.001
+        let fontVar = UIFont.systemFont(ofSize: 0.02)
+        let containerFrameVar = CGRect(x: -0.05, y: -0.1, width: 0.1, height: 0.1)
+        let alignmentVar: CTTextAlignment = .center
+        let lineBreakModeVar : CTLineBreakMode = .byWordWrapping
+        
+        let textMeshResource : MeshResource = .generateText(textString,
+                                           extrusionDepth: depthVar,
+                                           font: fontVar,
+                                           containerFrame: containerFrameVar,
+                                           alignment: alignmentVar,
+                                           lineBreakMode: lineBreakModeVar)
+        
+        let textEntity = ModelEntity(mesh: textMeshResource, materials: [materialVar])
+        
+        return textEntity
     }
     
     /// - Tag: DidOutputCollaborationData
