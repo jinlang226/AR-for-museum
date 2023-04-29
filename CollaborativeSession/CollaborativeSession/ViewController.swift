@@ -104,30 +104,14 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }
     
-    func createAnnotationNode(text: String) -> ModelEntity {
-        let textMesh = MeshResource.generateText(text, extrusionDepth: 0.01, font: .systemFont(ofSize: 0.1), containerFrame: CGRect(origin: .zero, size: CGSize(width: 1.0, height: 0.2)), alignment: .center, lineBreakMode: .byWordWrapping)
-        let textMaterial = SimpleMaterial(color: .white, roughness: 0.0, isMetallic: true)
-        let annotationNode = ModelEntity(mesh: textMesh, materials: [textMaterial])
-        return annotationNode
-    }
-    
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
         for anchor in anchors {
             if let text = anchor.name {
-                
-//                let annotationNode = self.createAnnotationNode(text: anchor.name!)
-                
 //                // Position the annotation node relative to the anchor
-                
 //                let anchorWorldPosition = anchor.transform.columns.3
                 
 //                let annotationPositionInAnchor = anchorEntity.convert(position: SIMD3<Float>(anchorWorldPosition.x, anchorWorldPosition.y, anchorWorldPosition.z), to: annotationNode)
 //                annotationNode.position = annotationPositionInAnchor
-//
-//                // Make annotation always face the camera
-//                annotationNode.look(at: arView.cameraTransform.translation, from: annotationNode.position, relativeTo: nil)
-//                let annotationOrientation = simd_quatf(angle: .pi, axis: SIMD3<Float>(0, 1, 0))
-//                annotationNode.orientation = annotationNode.orientation * annotationOrientation
 
 //                let coordinateSystem = MeshResource.generateCoordinateSystemAxes()
 //                anchorEntity.addChild(coordinateSystem)
@@ -138,21 +122,18 @@ class ViewController: UIViewController, ARSessionDelegate {
 //                let textEntity = ModelEntity(mesh: textMesh, materials: [SimpleMaterial(color: color, isMetallic: true)])
 //
 //                textEntity.position = [0, 0, 0]
-
-                let anchorEntity = AnchorEntity(anchor: anchor)
                 
-                let textEntity = textGen(textString: text)
-
+                let anchorEntity = AnchorEntity(anchor: anchor)
+                let color = anchor.sessionIdentifier?.toRandomColor() ?? .white
+                let textEntity = textGen(textString: text, color: color)
                 anchorEntity.addChild(textEntity)
-
                 arView.scene.addAnchor(anchorEntity)
             }
         }
     }
     
-    func textGen(textString: String) -> ModelEntity {
-            
-        let materialVar = SimpleMaterial(color: .red, roughness: 0, isMetallic: false)
+    func textGen(textString: String, color: UIColor) -> ModelEntity {
+        let materialVar = SimpleMaterial(color: color, roughness: 0, isMetallic: false)
         
         let depthVar: Float = 0.001
         let fontVar = UIFont.systemFont(ofSize: 0.02)
