@@ -74,10 +74,45 @@ class ViewController: UIViewController, ARSessionDelegate {
     
     @objc
     func handleTap(recognizer: UITapGestureRecognizer) {
+        
         let location = recognizer.location(in: arView)
         
         // Attempt to find a 3D location on a horizontal surface underneath the user's touch location.
         let results = arView.raycast(from: location, allowing: .estimatedPlane, alignment: .horizontal)
+//        let results = arView.hitTest(location, types: .existingPlaneUsingExtent)
+        
+//        let tapLocation = sender.location(in: arView)
+        let hitTestResults = arView.hitTest(location)
+        for result in hitTestResults {
+            if let entity = result.entity as? ModelEntity {
+                // A ModelEntity has been tapped
+                print("Tapped on ModelEntity: \(entity.name ?? "")")
+                // Do whatever you want to do when a ModelEntity is tapped
+                let alertController = UIAlertController(title: "Rate Entity", message: "Please rate this entity from 1 to 5", preferredStyle: .alert)
+                
+                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+                
+                let rateAction = UIAlertAction(title: "Rate", style: .default) { _ in
+                    // Get rating from user
+                    if let textField = alertController.textFields?.first,
+                        let ratingString = textField.text,
+                        let rating = Int(ratingString) {
+                            let textEntity = self.textGen(textString: "\(rating)/5", color: .black)
+                            entity.addChild(textEntity)
+                        }
+                }
+                
+                alertController.addAction(cancelAction)
+                alertController.addAction(rateAction)
+                
+                alertController.addTextField { textField in
+                    textField.keyboardType = .numberPad
+                }
+                
+                present(alertController, animated: true, completion: nil)
+            }
+        }
+        
         if let firstResult = results.first {
             
             let alertController = UIAlertController(title: "Annotate", message: "Enter your annotation", preferredStyle: .alert)
@@ -102,36 +137,50 @@ class ViewController: UIViewController, ARSessionDelegate {
             messageLabel.displayMessage("Can't place object - no surface found.\nLook for flat surfaces.", duration: 2.0)
             print("Warning: Object placement failed.")
         }
+        
+        // Check if the tap intersects with any meshes in the scene
+        /*
+        if let entity = arView.entity(at: location) {
+            // Display rating prompt
+            let alertController = UIAlertController(title: "Rate Entity", message: "Please rate this entity from 1 to 5", preferredStyle: .alert)
+            
+            let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+            
+            let rateAction = UIAlertAction(title: "Rate", style: .default) { _ in
+                // Get rating from user
+                if let textField = alertController.textFields?.first,
+                    let ratingString = textField.text,
+                    let rating = Int(ratingString) {
+                        let textEntity = self.textGen(textString: "\(rating)/5", color: .black)
+                        entity.addChild(textEntity)
+                    }
+            }
+            
+            alertController.addAction(cancelAction)
+            alertController.addAction(rateAction)
+            
+            alertController.addTextField { textField in
+                textField.keyboardType = .numberPad
+            }
+            
+            present(alertController, animated: true, completion: nil)
+        }
+         */
     }
     
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
         for anchor in anchors {
             if let text = anchor.name {
-//                // Position the annotation node relative to the anchor
-//                let anchorWorldPosition = anchor.transform.columns.3
-                
-//                let annotationPositionInAnchor = anchorEntity.convert(position: SIMD3<Float>(anchorWorldPosition.x, anchorWorldPosition.y, anchorWorldPosition.z), to: annotationNode)
-//                annotationNode.position = annotationPositionInAnchor
-
-//                let coordinateSystem = MeshResource.generateCoordinateSystemAxes()
-//                anchorEntity.addChild(coordinateSystem)
-                
-//                let color = anchor.sessionIdentifier?.toRandomColor() ?? .white
-//                let textMesh = MeshResource.generateText(text, extrusionDepth: 0.01, font: .systemFont(ofSize: 0.1), containerFrame: CGRect(origin: .zero, size: CGSize(width: 1.0, height: 0.2)), alignment: .center, lineBreakMode: .byWordWrapping)
-//                let textMaterial = SimpleMaterial(color: .white, roughness: 0.0, isMetallic: true)
-//                let textEntity = ModelEntity(mesh: textMesh, materials: [SimpleMaterial(color: color, isMetallic: true)])
-//
-//                textEntity.position = [0, 0, 0]
-                
                 let anchorEntity = AnchorEntity(anchor: anchor)
                 let color = anchor.sessionIdentifier?.toRandomColor() ?? .white
                 let textEntity = textGen(textString: text, color: color)
+                
                 anchorEntity.addChild(textEntity)
                 
-                // adding gesture recognition
+                //add collision
                 textEntity.generateCollisionShapes(recursive: true)
                 arView.installGestures([.all], for: textEntity)
-                
+
                 arView.scene.addAnchor(anchorEntity)
             }
         }
@@ -152,9 +201,25 @@ class ViewController: UIViewController, ARSessionDelegate {
                                            containerFrame: containerFrameVar,
                                            alignment: alignmentVar,
                                            lineBreakMode: lineBreakModeVar)
+//
+//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+//        meshResource.addGestureRecognizer(tapGesture)
         
+//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(recognizer:)))
+//        textEntity.addGestureRecognizer(tapGesture)
+        
+//
+//        textEntity.generateCollisionShapes(recursive: true)
+//        textEntity.components[CollisionComponent] = CollisionComponent(
+//            shapes: [.generateBox(size: 0.1)],
+//            mode: .trigger,
+//            filter: .sensor
+//        )
+//        textEntity.components[TapGestureComponent] = TapGestureComponent(for: .touchUpInside)
+//        textEntity.components[TapGestureComponent]?.addTarget(self, action: #selector(handleTap(_:)))
+//
+
         let textEntity = ModelEntity(mesh: textMeshResource, materials: [materialVar])
-        
         return textEntity
     }
     
