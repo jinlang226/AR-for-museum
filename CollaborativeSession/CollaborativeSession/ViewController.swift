@@ -127,6 +127,11 @@ class ViewController: UIViewController, ARSessionDelegate {
                 let color = anchor.sessionIdentifier?.toRandomColor() ?? .white
                 let textEntity = textGen(textString: text, color: color)
                 anchorEntity.addChild(textEntity)
+                
+                // adding gesture recognition
+                textEntity.generateCollisionShapes(recursive: true)
+                arView.installGestures([.all], for: textEntity)
+                
                 arView.scene.addAnchor(anchorEntity)
             }
         }
