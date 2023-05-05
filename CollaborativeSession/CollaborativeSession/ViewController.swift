@@ -24,6 +24,12 @@ class ViewController: UIViewController, ARSessionDelegate {
     // This is useful for keeping track of which peer created which ARAnchors.
     var peerSessionIDs = [MCPeerID: String]()
     
+    // should rotate if vertical plane
+    var anchorEntitiesToRotate: [UUID: Bool] = [:]
+    
+    //maps anchor identifiers to their corresponding EmojiData objects
+//    var emojiEntities = [UUID: EmojiData]()
+
     var sessionIDObservation: NSKeyValueObservation?
     
     var configuration: ARWorldTrackingConfiguration?
@@ -45,7 +51,9 @@ class ViewController: UIViewController, ARSessionDelegate {
         
         // Enable realistic reflections.
         configuration?.environmentTexturing = .automatic
-
+        
+        configuration?.planeDetection = [.horizontal, .vertical]
+        
         // Begin the session.
         arView.session.run(configuration!)
         
@@ -69,40 +77,68 @@ class ViewController: UIViewController, ARSessionDelegate {
 
         arView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap(recognizer:))))
         
-        messageLabel.displayMessage("Tap the screen to place cubes.\nInvite others to launch this app to join you.", duration: 60.0)
+        messageLabel.displayMessage("Tap the screen to create annotations.\nInvite others to launch this app to join you.", duration: 60.0)
+        
+        // Create the fake message label
+        let messageLabel = UILabel(frame: CGRect(x: view.bounds.width - 200, y: view.bounds.height - 50, width: 200, height: 50))
+        messageLabel.text = "2 People Online"
+        messageLabel.textColor = .white
+        messageLabel.textAlignment = .right
+        view.addSubview(messageLabel)
     }
     
     @objc
     func handleTap(recognizer: UITapGestureRecognizer) {
         let location = recognizer.location(in: arView)
-        let results = arView.raycast(from: location, allowing: .estimatedPlane, alignment: .horizontal)
+        
+        //first see if the user tap the mesh object
         let hitTestResults = arView.hitTest(location)
         
-        // rating
         for result in hitTestResults {
+            //  let anchorEntity = entity.parent as? AnchorEntity
             if let entity = result.entity as? ModelEntity {
-                let alertController = UIAlertController(title: "Rate Entity", message: "Please rate this entity from 1 to 5", preferredStyle: .alert)
-                let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
-                let rateAction = UIAlertAction(title: "Rate", style: .default) { _ in
-                    // Get rating from user
-                    if let textField = alertController.textFields?.first,
-                        let ratingString = textField.text,
-                        let rating = Int(ratingString) {
-                            let textEntity = self.textGen(textString: "\(rating)/5", color: .black)
-                            entity.addChild(textEntity)
-                        }
-                }
-                alertController.addAction(cancelAction)
-                alertController.addAction(rateAction)
-                alertController.addTextField { textField in
-                    textField.keyboardType = .numberPad
-                }
+                // Show like/dislike prompt
+                let alertController = UIAlertController(title: "Like or Dislike?", message: nil, preferredStyle: .alert)
+                
+                alertController.addAction(UIAlertAction(title: "👍", style: .default, handler: { _ in
+                    // Load a 3D model file
+                    let likeEntity = self.textGen(textString: ":)", color: .yellow)
+
+                    likeEntity.position = entity.position + [0.04, 0.0, 0.0]
+                    entity.addChild(likeEntity)
+                }))
+                
+                alertController.addAction(UIAlertAction(title: "👎", style: .default, handler: { _ in
+                    
+                    let dislikeEntity = self.textGen(textString: ":(", color: .brown)
+
+                    dislikeEntity.position = entity.position + [0.06, 0.0, 0.0]
+                    entity.addChild(dislikeEntity)
+                }))
+                
                 present(alertController, animated: true, completion: nil)
+                return
             }
         }
         
         //annotation
-        if let firstResult = results.first {
+//        let results = arView.raycast(from: location, allowing: .estimatedPlane, alignment: alignment)
+        let horizontalResults = arView.raycast(from: location, allowing: .estimatedPlane, alignment: .horizontal)
+        let verticalResults = arView.raycast(from: location, allowing: .estimatedPlane, alignment: .vertical)
+//        let results = horizontalResults + verticalResults
+
+        var result: ARRaycastResult?
+
+        // returns the value of its left-hand operand (horizontalResult) if it's non-nil
+        // otherwise, it returns the value of its right-hand operand (verticalResult)
+        if !horizontalResults.isEmpty {
+            result = horizontalResults.first
+        } else if !verticalResults.isEmpty {
+            result = verticalResults.first
+        }
+        let isVertical = !verticalResults.isEmpty
+        
+        if let firstResult = result {
             let alertController = UIAlertController(title: "Annotate", message: "Enter your annotation", preferredStyle: .alert)
                         alertController.addTextField()
             let addAction = UIAlertAction(title: "Add", style: .default) { [weak self, weak alertController] _ in
@@ -115,6 +151,9 @@ class ViewController: UIViewController, ARSessionDelegate {
                 // Add an ARAnchor at the touch location with a special name you check later in `session(_:didAdd:)`.
                 let anchor = ARAnchor(name: text, transform: firstResult.worldTransform)
                 arView.session.add(anchor: anchor)
+                if isVertical {
+                    anchorEntitiesToRotate[anchor.identifier] = true
+                }
             }
             alertController.addAction(addAction)
             let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
@@ -127,10 +166,55 @@ class ViewController: UIViewController, ARSessionDelegate {
         }
     }
     
+//    private func loadRedPandaModel() -> SCNNode {
+//        let sceneURL = Bundle.main.url(forResource: "max", withExtension: "scn", subdirectory: "Assets.scnassets")!
+//        let referenceNode = SCNReferenceNode(url: sceneURL)!
+//        referenceNode.load()
+//
+//        return referenceNode
+//    }
+    
+    
+//    func updateAndSendEmoji(anchorIdentifier: UUID, like: Bool) {
+//        // Retrieve the existing EmojiData associated with the anchorEntity's identifier
+//        if let emojiData = emojiEntities[anchor.identifier]  {          // Update the like or dislike count based on user input
+//            if like {
+//                emojiData.likeCount += 1
+//            } else {
+//                emojiData.dislikeCount += 1
+//            }
+//
+//            // Update the emoji model entity with the new counts
+//            let newEmojiText = "👍\(emojiData.likeCount) 👎\(emojiData.dislikeCount)"
+//            if let existingEmojiEntity = anchorEntity.findEntity(named: "emoji") as? ModelEntity {
+//                existingEmojiEntity.removeFromParent()
+//            }
+//
+//            let emojiEntity = createEmojiEntity(text: newEmojiText)
+//            emojiEntity.name = "emoji"
+//            anchorEntity.addChild(emojiEntity)
+//
+//            // Send the updated EmojiData to other users
+//            if let multipeerSession = multipeerSession {
+//                sendEmojiData(emojiData, to: multipeerSession.connectedPeers)
+//            }
+//        }
+//    }
+
+
+    
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
         for anchor in anchors {
             if let text = anchor.name {
                 let anchorEntity = AnchorEntity(anchor: anchor)
+                
+                // Check if the anchor should be rotated
+                if let shouldRotate = anchorEntitiesToRotate[anchor.identifier], shouldRotate {
+                    // Rotate the anchor's transform around the X-axis by -90 degrees (in radians)
+                    let rotationAngle = -Float.pi / 2
+                    anchorEntity.transform.rotation = simd_quatf(angle: rotationAngle, axis: [1, 0, 0])
+                }
+
                 let color = anchor.sessionIdentifier?.toRandomColor() ?? .white
                 let textEntity = textGen(textString: text, color: color)
                 
@@ -144,7 +228,6 @@ class ViewController: UIViewController, ARSessionDelegate {
             }
         }
     }
-    
     
     
     func textGen(textString: String, color: UIColor) -> ModelEntity {
@@ -212,6 +295,7 @@ class ViewController: UIViewController, ARSessionDelegate {
             return true
         }
     }
+    
     /// - Tag: PeerJoined
     func peerJoined(_ peer: MCPeerID) {
         messageLabel.displayMessage("""
